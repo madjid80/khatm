@@ -23,10 +23,10 @@ app.post('/user/verify', user.tokenVerification)
 * Khatm API
 **/
 app.post('/khatm/create', khatm.create); 
-//app.get('/khatm/features', khatm.features); 
+app.get('/khatm/features', khatm.getAllFeatures); 
 app.get('/khatm/', khatm.getAllUserKhatm); 
-//app.get('/khatm/:id', khatm.getSpecificKhatm); 
-//app.put('/khatm/:id', khatm.modifyKhatm); 
+app.get('/khatm/:id', khatm.getSpecificKhatm); 
+app.put('/khatm/:id', khatm.modifyKhatm); 
  
 
 

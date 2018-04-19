@@ -1,5 +1,6 @@
 var randtoken = require('rand-token');
 var db = require(__dirname+'/../utility/mongo.js')
+var request = require(__dirname+'/../utility/requests.js')
 var User = function(){
   this.id = "";
   this.phone = null; 
@@ -89,6 +90,7 @@ User.prototype.restore = async function(){
   }
 }
 User.prototype.sendMobileVerificationCode = async function(){
+  try{
   var tokendigit = randtoken.generator({chars: '0-9'})
   if(global.mongodb == null ){
     throw new Error('Mongo db still not connected, DB cant find');
@@ -98,7 +100,11 @@ User.prototype.sendMobileVerificationCode = async function(){
   mobileCode.token = tokendigit.generate(5);
   mobileCode.phone = this.phone; 
   await db.InsertManyDB([mobileCode], 'phoneToken');
-
+  await request.postRequest("https://api.kavenegar.com/v1/"+process.env.KNAPI+"/sms/send.json"+"?"+
+    "receptor="+this.phone+"&message=your validate code is"+mobileCode.token.toString(),{},{}) 
+  }catch(e){
+    global.log.error("there is an error in verification  mobile: ", e)
+  }
 }
 User.prototype.sendEmailVerificationCode = async function(){
   if(global.mongodb == null ){

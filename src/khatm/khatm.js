@@ -61,6 +61,7 @@ var Khatm = function(){
   this.url = null;
   this.type = null ;
   this.created_at = null; 
+  this.isPublic = false; 
 }
 
 Khatm.prototype.fromJson = function(obj){
@@ -98,6 +99,12 @@ Khatm.prototype.fromJson = function(obj){
   if(obj.hasOwnProperty("created_at")){
     this.created_at = obj.created_at
   }
+
+  if(obj.hasOwnProperty("isPublic")){
+    this.isPublic = obj.isPublic
+  }else{
+    throw new Error("There is n't any isPublic for this khatm")
+  }
 }
 Khatm.prototype.toJson = function(){
   return {
@@ -107,6 +114,7 @@ Khatm.prototype.toJson = function(){
     quote: this.quote, 
     title: this.title, 
     url: this.url, 
+    isPublic: this.isPublic,
     type: this.type
   }
 }
@@ -116,6 +124,7 @@ Khatm.prototype.dbOut = function(){
     ownerId: this.ownerId, 
     title: this.title, 
     type: this.type,
+    isPublic: this.isPublic, 
     created_at: this.created_at
   }
 }
@@ -129,7 +138,31 @@ Khatm.prototype.store = async function(){
   this.id = result[0]._id.toString();
 
 }
-Khatm.prototype.restore = async function(){}
+Khatm.prototype.update= async function(){
+  if(global.mongodb == null ){
+    throw new Error('Mongo db still not connected, DB cant find')
+  }
+  var filter = {}
+  if(this.id.length > 0 ){
+    filter = {"_id": db.ObjectId(this.id)}
+  }
+  let temp = await db.UpdateDB(filter, this.dbOut(),'khatm', {});
+}
+Khatm.prototype.restore = async function(){
+  if(global.mongodb == null ){
+    throw new Error('Mongo db still not connected, DB cant find')
+  }
+  var filter = {}
+  if(this.id.length > 0 ){
+    filter = {"_id": db.ObjectId(this.id)}
+  }
+  let temp = await db.GetSpecificFromDB(filter, 'khatm', {});
+  if(temp.length){
+    this.fromJson(temp[0].docs);
+  }else{
+    throw new Error("There isnt any campaign with this id");
+  }
+}
 Khatm.prototype.buildBasedOnPage = async function(){
   var khatm = this;
   var refrence = db.CreateRefrence('khatm', khatm.id);
@@ -149,7 +182,7 @@ Khatm.prototype.buildBasedOnPage = async function(){
 }
 Khatm.prototype.buildBasedOnHezb = async function(){
   var khatm = this;
-  var refrence = db.createRefrence('khatm', this.id);
+  var refrence = db.CreateRefrence('khatm', this.id);
   return new Promise((reject, resolve)=>{
     asyncLib.timesLimit( 120,20,async  function(index, next){
         var quote = new Quote();
@@ -164,7 +197,7 @@ Khatm.prototype.buildBasedOnHezb = async function(){
 }
 Khatm.prototype.buildBasedOnJoz = async function(){
   var khatm = this;
-  var refrence = db.createRefrence('khatm', this.id);
+  var refrence = db.CreateRefrence('khatm', this.id);
   return new Promise((reject, resolve)=>{
     asyncLib.timesLimit( 30,20,async  function(index, next){
         var quote = new Quote();
@@ -179,7 +212,7 @@ Khatm.prototype.buildBasedOnJoz = async function(){
 }
 Khatm.prototype.buildBasedOnManzil = async function(){
   var khatm = this;
-  var refrence = db.createRefrence('khatm', this.id);
+  var refrence = db.CreateRefrence('khatm', this.id);
   return new Promise((reject, resolve)=>{
     asyncLib.timesLimit( 7,20,async  function(index, next){
         var quote = new Quote();
