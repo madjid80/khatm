@@ -16,6 +16,7 @@ app.post('/user/create', user.create)
 app.post('/user/login', user.login)
 app.get('/user/:id', user.getUser)
 app.put('/user/:id', user.modifyUser)
+app.post('/user/verify', user.tokenVerification)
 
 exports.router = app;
 exports.userTokenCheck = user.tokenCheck

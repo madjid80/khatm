@@ -132,3 +132,8 @@ module.exports.CreateRefrence = function(collection , id){
   global.log.info("CreateRefrence called");
   return new mongo.DBRef(collection, new mongo.ObjectId(id))
 }
+
+module.exports.ObjectId = function( id){
+  global.log.info("ObjectID called");
+  return new mongo.ObjectId(id)
+}
