@@ -1,57 +1,6 @@
 var asyncLib = require("async");
 var db = require(__dirname+'/../utility/mongo.js')
-
-var Quote = function(){
-  this.id = null; 
-  this.refrence_khatm = null; 
-  this.owner_id = null; 
-  this.status = null;
-  this.share_status = null;  
-  this.time = null; 
-  this.start_at = null; 
-  this.url = null; 
-  this.type = 0; //0 page, 1 hezb, 2 joz, 3 manzil 
-}
-
-Quote.prototype.toJson = function (){
-  return {
-    id: this.id, 
-    refrence: this.refrence_khatm, 
-    owner_id: this.owner_id, 
-    status: this.status, 
-    share_status: this.share_status, 
-    time: this.time, 
-    start_at: this.start_at, 
-    url: this.url, 
-    type: this.type
-  }
-}
-Quote.prototype.fromJson = function(){}
-Quote.prototype.dbOut =  function(){
-  return {
-    id: this.id, 
-    refrence: this.refrence_khatm, 
-    owner_id: this.owner_id, 
-    status: this.status, 
-    share_status: this.share_status, 
-    time: this.time, 
-    start_at: this.start_at, 
-    created_at: this.created_at, 
-    url: this.url, 
-    type: this.type
-  }
-}
-Quote.prototype.store = async function(){
-  if(global.mongodb == null ){
-    throw new Error('Mongo db still not connected, DB cant find');
-  }
-  this.created_at = (new Date()).getTime();
-  global.log.debug("quote save is: ", this.dbOut())
-  var result = await db.InsertManyDB([this.dbOut()], 'quote');
-  this.id = result[0]._id.toString();
-}; 
-Quote.prototype.restore = function(){};
-
+var Quote = require(__dirname+'/quote.js')
 var Khatm = function(){
   this.id = null; 
   this.ownerId = null ; 
@@ -148,6 +97,29 @@ Khatm.prototype.update= async function(){
   }
   let temp = await db.UpdateDB(filter, this.dbOut(),'khatm', {});
 }
+Khatm.prototype.restoreQuotes = async function(quotes){
+  var khatm = this; 
+  var quotesAll = 0; 
+  var quotesDone = 0; 
+  var quotesReserve = 0 ; 
+  return new Promise((resolve, reject)=>{
+    asyncLib.each(quotes, function(value, callback){
+      var quote = new Quote(); 
+      quote.fromJson(value);
+      quotesAll++; 
+      if(quote.owner_id){
+        quotesReserve++; 
+      }
+      if(!quote.status && quote.status == 2){
+        quotesDone++; 
+      }
+      khatm.quote.push(quote.toJson());
+      callback();  
+    },function(){
+      resolve({all: quotesAll, done: quotesDone, reserve: quotesReserve});
+    })
+  })
+}
 Khatm.prototype.restore = async function(){
   if(global.mongodb == null ){
     throw new Error('Mongo db still not connected, DB cant find')
@@ -159,6 +131,9 @@ Khatm.prototype.restore = async function(){
   let temp = await db.GetSpecificFromDB(filter, 'khatm', {});
   if(temp.length){
     this.fromJson(temp[0].docs);
+    var refrence = db.CreateRefrence('khatm', this.id);
+    var quotes = await db.FindAllFromDB({refrence_khatm:refrence}, "quote");
+    this.progress = await this.restoreQuotes(quotes);
   }else{
     throw new Error("There isnt any campaign with this id");
   }
@@ -172,6 +147,7 @@ Khatm.prototype.buildBasedOnPage = async function(){
         quote.start_at = index+1;
         quote.type = 0 ;   
         quote.refrence_khatm = refrence; 
+        quote.url = "http://forghan.com/p/"+index
         quote.store(); 
     }, function(err, results){
       global.log.error(err)
@@ -189,7 +165,8 @@ Khatm.prototype.buildBasedOnHezb = async function(){
         quote.start_at = index+1;  
         quote.type = 1 ;   
         quote.refrence_khatm = refrence; 
-        await quote.store(); 
+        quote.url = "http://forghan.com/h/"+index
+        quote.store(); 
     }, function(err, results){
       resolve();
     }); 
@@ -204,7 +181,8 @@ Khatm.prototype.buildBasedOnJoz = async function(){
         quote.start_at = index+1;  
         quote.type = 2 ;   
         quote.refrence_khatm = refrence; 
-        await quote.store(); 
+        quote.url = "http://forghan.com/j/"+index
+        quote.store(); 
     }, function(err, results){
       resolve();
     }); 
@@ -219,7 +197,8 @@ Khatm.prototype.buildBasedOnManzil = async function(){
         quote.start_at = index+1;  
         quote.type = 3 ;   
         quote.refrence_khatm = refrence; 
-        await quote.store(); 
+        quote.url = "http://forghan.com/m/"+index
+        quote.store(); 
     }, function(err, results){
       resolve();
     }); 

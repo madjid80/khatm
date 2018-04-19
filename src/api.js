@@ -28,7 +28,10 @@ app.get('/khatm/', khatm.getAllUserKhatm);
 app.get('/khatm/:id', khatm.getSpecificKhatm); 
 app.put('/khatm/:id', khatm.modifyKhatm); 
  
-
+/**
+*
+*/
+app.post('/khatm/:id/quote/:num', khatm.reserveQuotes);
 
 exports.router = app;
 exports.userTokenCheck = user.tokenCheck
