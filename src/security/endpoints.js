@@ -1,4 +1,5 @@
 var User = require(__dirname+'/user.js')
+var db = require(__dirname+'/../utility/mongo.js')
 module.exports.create = async function(req, res){
   try{
     var user = new User(); 
@@ -46,6 +47,8 @@ module.exports.tokenVerification = async function(req, res){
       throw new Error("There is n't any verification code to check")
     }
     await user.restore();
+    await user.GenerateAccessToken(); 
+    res.set('token',user.accessToken);  
     res.status(200).send(user.toJson())
   }catch(e){
     global.log.error("an error rised form user creation: ", e)
@@ -55,8 +58,10 @@ module.exports.tokenVerification = async function(req, res){
 module.exports.getUser = async function(req, res){
   try{
     var user = new User(); 
-    //check for ID 
-    user.fromJson(req.body);
+    if(!req.params.id){
+      throw new Error("there isnt any id in request")
+    }
+    user.id = req.params.id; 
     await user.restore();
     res.status(200).send(user.toJson())
   }catch(e){
@@ -65,6 +70,15 @@ module.exports.getUser = async function(req, res){
   }
 }
 module.exports.modifyUser = function(req, res){}
-module.exports.tokenCheck = function(token){
-
+module.exports.tokenCheck = async function(token){
+   try{
+    var user = new User(); 
+    user.accessToken = token; 
+    await user.restore();
+    return user.toJson();
+  }catch(e){
+    global.log.error("an error rised form user creation: ", e)
+    return null
+  }
+ 
 }

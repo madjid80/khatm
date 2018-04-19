@@ -8,6 +8,7 @@ var User = function(){
   this.country = "IRI";
   this.isActive = false;  
   this.created_at = (new Date()).getTime(); 
+  this.accessToken = null
 }
 User.prototype.fromJson = function (obj){
   if(obj.hasOwnProperty("phone")){
@@ -43,7 +44,8 @@ User.prototype.toJson = function(){
     ip: this.ip, 
     country: this.country,
     isActive: this.isActive,
-    created_at: this.created_at
+    created_at: this.created_at,
+    accessToken: this.accessToken
   }
 }
 User.prototype.dbOut= function(){
@@ -76,6 +78,8 @@ User.prototype.restore = async function(){
     filter= {"phone":this.phone};
   }else if(this.hasEmail()){
     filter= {"email":this.phone};
+  }else if(this.accessToken){
+    filter = {"accessToken": this.accessToken}
   }
   let temp = await db.GetSpecificFromDB(filter, 'user', {});
   if(temp.length){
@@ -97,6 +101,15 @@ User.prototype.sendMobileVerificationCode = async function(){
 
 }
 User.prototype.sendEmailVerificationCode = async function(){
+  if(global.mongodb == null ){
+    throw new Error('Mongo db still not connected, DB cant find');
+  }
+  var emailCode = {}
+  emailCode.created_at = (new Date()).getTime();
+  emailCode.token = randtoken.generate(10);
+  emailCode.email = this.email; 
+  await db.InsertManyDB([emailCode], 'emailToken');
+  
 
 }
 User.prototype.checkMobileVerificationCode = async function(code){
@@ -108,7 +121,12 @@ User.prototype.checkMobileVerificationCode = async function(code){
   return token.length
 }
 User.prototype.checkEmailVerificationCode = async function(code){
-
+  var time = new Date(); 
+  time.setMinutes(time.getMinutes()-5);
+  var filter = {"$and":[{"email": this.email}, {"token":code}, {"created_at":{"$gt":time.getTime()}}]}
+  var token = await db.FindAllFromDB(filter, "emailToken"); 
+  global.log.debug("email verification code which found are: ", token)
+  return token.length
 }
 User.prototype.hasMobile = function(){
   return this.phone != null && this.phone.length> 9 ; 
@@ -151,5 +169,11 @@ User.prototype.checkVerificationCode = async function(code){
   }else if(this.hasEmail()){
     return await this.checkEmailVerificationCode(code)
   } 
+}
+User.prototype.GenerateAccessToken = async function(){
+  this.accessToken = randtoken.generate(40);
+  this.isActive = true ;
+  await db.UpdateDB({ _id: db.ObjectId(this.id)  }, 
+    { "$set":{"accessToken": this.accessToken, "isActive":true}},'user')
 }
 module.exports = User; 

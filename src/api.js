@@ -1,6 +1,7 @@
 var express = require('express')
 var app = express.Router()
 var user = require(__dirname+'/security/endpoints.js')
+var khatm = require(__dirname+'/khatm/endpoints.js')
 
 
 
@@ -17,6 +18,17 @@ app.post('/user/login', user.login)
 app.get('/user/:id', user.getUser)
 app.put('/user/:id', user.modifyUser)
 app.post('/user/verify', user.tokenVerification)
+
+/**
+* Khatm API
+**/
+app.post('/khatm/create', khatm.create); 
+//app.get('/khatm/features', khatm.features); 
+app.get('/khatm/', khatm.getAllUserKhatm); 
+//app.get('/khatm/:id', khatm.getSpecificKhatm); 
+//app.put('/khatm/:id', khatm.modifyKhatm); 
+ 
+
 
 exports.router = app;
 exports.userTokenCheck = user.tokenCheck

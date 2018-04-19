@@ -63,14 +63,13 @@ async function authentication(req, res, next) {
     return 
   }
   try {
-   /**
-    var result = await CheckAuthentication(token, version);
-    if (result.isAuth != true) {
-      log.error(result);
-      throw new Error("Access denied");
+    var result = await api.userTokenCheck(token);
+    if (!result) {
+      log.error("Can't find user with this ID");
+      throw new Error("Token is wrong");
     }
-    res.set('token', result.newToken);
-    req.user = {role: result.user_role, role_code: result.user_role.code, username: result.user_name}; **/
+    res.set('token', result.accessToken);
+    req.user = result;
   } catch (e) {
     log.error('The token is unvlid and not authorized');
     log.error(e);
