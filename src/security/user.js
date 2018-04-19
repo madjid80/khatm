@@ -13,8 +13,8 @@ User.prototype.fromJson = function (obj){
   if(obj.hasOwnProperty("phone")){
     this.phone = obj.phone
   }
-  if(obj.hasOwnProperty("email")){
-    if(this.validateEmail(obj.email){
+  if(obj.hasOwnProperty("email") && obj.email){
+    if(this.validateEmail(obj.email)){
       this.email = obj.email; 
     }else{
       throw new Error("email is not validate: ",obj.email)
@@ -26,7 +26,7 @@ User.prototype.fromJson = function (obj){
 
   if(obj.hasOwnProperty("id")){
     this.id = obj.id
-  }else if(obj.hasOwnPropery("_id")){
+  }else if(obj.hasOwnProperty("_id")){
     this.id = obj._id.toString()
   }
   if(this.phone == null && 
@@ -62,7 +62,7 @@ User.prototype.store = async function(){
   }
   this.created_at = (new Date()).getTime();
 
-  var result = await db.InsertManyDB([this.DbOut()], 'user');
+  var result = await db.InsertManyDB([this.dbOut()], 'user');
   this.id = result[0]._id.toString();
 }
 User.prototype.restore = async function(){
@@ -77,7 +77,7 @@ User.prototype.restore = async function(){
   }else if(this.hasEmail()){
     filter= {"email":this.phone};
   }
-  let temp = await db.GetSpecificFromDB(filter, 'user', filters);
+  let temp = await db.GetSpecificFromDB(filter, 'user', {});
   if(temp.length){
     this.fromJson(temp[0].docs);
   }else{
@@ -100,7 +100,12 @@ User.prototype.sendEmailVerificationCode = async function(){
 
 }
 User.prototype.checkMobileVerificationCode = async function(code){
-
+  var time = new Date(); 
+  time.setMinutes(time.getMinutes()-5);
+  var filter = {"$and":[{"phone": this.phone}, {"token":code}, {"created_at":{"$gt":time.getTime()}}]}
+  var token = await db.FindAllFromDB(filter, "phoneToken"); 
+  global.log.debug("mobile verification code which found are: ", token)
+  return token.length
 }
 User.prototype.checkEmailVerificationCode = async function(code){
 
@@ -112,6 +117,9 @@ User.prototype.hasEmail = function(){
   return this.email != null && this.email.length > 3;
 }
 User.prototype.validateEmail = function(email){
+    if(!email){
+      return false;
+    }
     var atpos = email.indexOf("@");
     var dotpos = email.lastIndexOf(".");
     if (atpos<1 || dotpos<atpos+2 || dotpos+2>=x.length) {
@@ -133,7 +141,7 @@ User.prototype.checkExistance = async function(){
   if(global.mongodb == null ){
     throw new Error('Mongo db still not connected, DB cant find');
   }
-  var users = await db.findAllFromDb(filters, "user"); 
+  var users = await db.FindAllFromDB(filters, "user"); 
   global.log.debug("User which find from DB Is: ", users)
   return users.length  
 }

@@ -1,4 +1,4 @@
-var User = require(__dirname+'/security/user.js')
+var User = require(__dirname+'/user.js')
 module.exports.create = async function(req, res){
   try{
     var user = new User(); 
@@ -7,7 +7,7 @@ module.exports.create = async function(req, res){
       throw new Error("User Exist")
     }
     if(user.hasMobile()){
-      user.sendMobileVerficationCode(); 
+      user.sendMobileVerificationCode();
     }else if (user.hasEmail()){
       user.sendEmailVerificationCOde(); 
     } 
@@ -24,7 +24,7 @@ module.exports.login = async function(req, res){
     user.fromJson(req.body);
     await user.restore();
     if(user.hasMobile()){
-      user.sendMobileVerficationCode(); 
+      user.sendMobileVerificationCode();
     }else if (user.hasEmail()){
       user.sendEmailVerificationCOde(); 
     } 
@@ -34,7 +34,7 @@ module.exports.login = async function(req, res){
     res.status(400).send(e)
   }
 }
-module.exports.tokenVerification = function(req, res){
+module.exports.tokenVerification = async function(req, res){
   try{
     var user = new User(); 
     user.fromJson(req.body);
@@ -52,7 +52,7 @@ module.exports.tokenVerification = function(req, res){
     res.status(401).send(e)
   }
 }
-module.exports.getUser = function(req, res){
+module.exports.getUser = async function(req, res){
   try{
     var user = new User(); 
     //check for ID 
@@ -64,7 +64,7 @@ module.exports.getUser = function(req, res){
     res.status(401).send(e)
   }
 }
-module.exports.modifyUSer = function(req, res){}
+module.exports.modifyUser = function(req, res){}
 module.exports.tokenCheck = function(token){
 
 }

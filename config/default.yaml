@@ -13,4 +13,4 @@ log:
     path: '/dev/stdout'
 cors:
   enable: true
-port: 8080
+port: 80

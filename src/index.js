@@ -47,7 +47,7 @@ if (config.has('cors.enable') &&
 function requestLogging(req, res, next) {
   log.info("A request entered");
   req.received_at = (new Date()).getTime();
-  global.statsd.increment('request');
+  app.use('/', api.router);
   next();
 }
 
@@ -60,6 +60,7 @@ async function authentication(req, res, next) {
   if (!token) {
     //log in as anymous user
     next()
+    return 
   }
   try {
    /**
