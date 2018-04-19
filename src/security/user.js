@@ -1,4 +1,4 @@
-
+var randtoken = require('rand-token');
 var db = require(__dirname+'/../utility/mongo.js')
 var User = function(){
   this.id = "";
@@ -85,6 +85,15 @@ User.prototype.restore = async function(){
   }
 }
 User.prototype.sendMobileVerificationCode = async function(){
+  var tokendigit = randtoken.generator({chars: '0-9'})
+  if(global.mongodb == null ){
+    throw new Error('Mongo db still not connected, DB cant find');
+  }
+  var mobileCode = {}
+  mobileCode.created_at = (new Date()).getTime();
+  mobileCode.token = tokendigit.generate(5);
+  mobileCode.phone = this.phone; 
+  await db.InsertManyDB([mobileCode], 'phoneToken');
 
 }
 User.prototype.sendEmailVerificationCode = async function(){
