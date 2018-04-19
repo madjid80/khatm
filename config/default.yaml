@@ -1,0 +1,16 @@
+DB:
+  redis:
+    host: 127.0.0.1
+    port: 6333
+  mongodb:
+    host: 127.0.0.1
+    port: 27017
+log:
+  enable: true 
+  level: debug
+  file:
+    enable: ture
+    path: '/dev/stdout'
+cors:
+  enable: true
+port: 8080
