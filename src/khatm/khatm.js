@@ -1,9 +1,9 @@
 var asyncLib = require("async");
 var db = require(__dirname+'/../utility/mongo.js')
+var User = require(__dirname+'/../security/user.js')
 var Quote = require(__dirname+'/quote.js')
 var Khatm = function(){
   this.id = null; 
-  this.ownerId = null ; 
   this.progress = null ;
   this.quote = [];
   this.title = null ; 
@@ -11,6 +11,10 @@ var Khatm = function(){
   this.type = null ;
   this.created_at = null; 
   this.isPublic = false; 
+  this.creator = null;
+  this.isFinished = false; 
+  this.contributors = []; 
+  
 }
 
 Khatm.prototype.fromJson = function(obj){
@@ -20,8 +24,8 @@ Khatm.prototype.fromJson = function(obj){
     this.id = obj.id;
   }
 
-  if(obj.hasOwnProperty("ownerId")){
-    this.ownerId = obj.ownerId; 
+  if(obj.hasOwnProperty("creator")){
+    this.creator = obj.creator; 
   }else{
     throw new Error("There is n't any ownerID for this khatm")
   }
@@ -30,6 +34,10 @@ Khatm.prototype.fromJson = function(obj){
   }
   if(obj.hasOwnProperty("quote")){
     this.quote = obj.quote; 
+  }
+
+  if(obj.hasOwnProperty("isFinished")){
+    this.isFinished = obj.isFinished; 
   }
   if(obj.hasOwnProperty("title")){
     this.title = obj.title; 
@@ -58,23 +66,26 @@ Khatm.prototype.fromJson = function(obj){
 Khatm.prototype.toJson = function(){
   return {
     id: this.id, 
-    ownerId: this.ownerId, 
+    creator: this.creator, 
     progress: this.progress, 
     quote: this.quote, 
     title: this.title, 
     url: this.url, 
     isPublic: this.isPublic,
-    type: this.type
+    type: this.type,
+    isFinished: this.isFinished,
+    contributors: this.contributors
   }
 }
 Khatm.prototype.dbOut = function(){
   return {
     id: this.id, 
-    ownerId: this.ownerId, 
+    creator: this.creator, 
     title: this.title, 
     type: this.type,
     isPublic: this.isPublic, 
-    created_at: this.created_at
+    created_at: this.created_at,
+    isFinished: this.isFinished
   }
 }
 Khatm.prototype.store = async function(){
@@ -102,8 +113,10 @@ Khatm.prototype.restoreQuotes = async function(quotes){
   var quotesAll = 0; 
   var quotesDone = 0; 
   var quotesReserve = 0 ; 
+  this.quote = [] 
+  var temp_contributers = {}
   return new Promise((resolve, reject)=>{
-    asyncLib.each(quotes, function(value, callback){
+    asyncLib.each(quotes,async  function(value, callback){
       var quote = new Quote(); 
       quote.fromJson(value);
       quotesAll++; 
@@ -113,11 +126,32 @@ Khatm.prototype.restoreQuotes = async function(quotes){
       if(!quote.status && quote.status == 2){
         quotesDone++; 
       }
+      if(quote.owner_id){
+        global.log.debug("owner id added to contrbuters:" ,quote.owner_id)
+        var user = new User(); 
+        user.id = quote.owner_id;
+        await user.restore();
+        temp_contributers[quote.owner_id] = (user.toJson())
+      } 
       khatm.quote.push(quote.toJson());
-      callback();  
-    },function(){
+    },function(err, results){
+      khatm.contributors = Object.values(temp_contributers)
       resolve({all: quotesAll, done: quotesDone, reserve: quotesReserve});
     })
+  })
+}
+Khatm.prototype.restoreCreator = async function(){
+  var khatm = this; 
+  return new Promise(async function(resolve, reject){
+    try{
+      var user = new User(); 
+      user.id = khatm.creator; 
+      await user.restore();
+      resolve(user.toJson());
+  }catch(e){
+    global.log.error("an error rised form user creation: ", e)
+    reject(null)
+  }
   })
 }
 Khatm.prototype.restore = async function(){
@@ -134,6 +168,7 @@ Khatm.prototype.restore = async function(){
     var refrence = db.CreateRefrence('khatm', this.id);
     var quotes = await db.FindAllFromDB({refrence_khatm:refrence}, "quote");
     this.progress = await this.restoreQuotes(quotes);
+    this.creator = await this.restoreCreator(); 
   }else{
     throw new Error("There isnt any campaign with this id");
   }
@@ -146,6 +181,7 @@ Khatm.prototype.buildBasedOnPage = async function(){
         var quote = new Quote();
         quote.start_at = index+1;
         quote.type = 0 ;   
+        quote.status = 0 ;   
         quote.refrence_khatm = refrence; 
         quote.url = "http://forghan.com/p/"+index
         quote.store(); 

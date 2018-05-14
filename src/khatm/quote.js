@@ -80,8 +80,22 @@ Quote.prototype.store = async function(){
   var result = await db.InsertManyDB([this.dbOut()], 'quote');
   this.id = result[0]._id.toString();
 }; 
-Quote.prototype.restore = function(){};
-
+Quote.prototype.restore = async function(){
+  if(global.mongodb == null ){
+    throw new Error('Mongo db still not connected, DB cant find')
+  }
+  var filter = {}
+  if(this.id.length > 0 ){
+    filter = {"_id": db.ObjectId(this.id)}
+  }
+  let temp = await db.GetSpecificFromDB(filter, 'quote', {});
+  if(temp.length){
+    this.fromJson(temp[0].docs);
+    global.log.debug(temp[0].docs)
+  }else{
+    throw new Error("There isnt any campaign with this id");
+  } 
+};
 Quote.prototype.update= async function(){
   if(global.mongodb == null ){
     throw new Error('Mongo db still not connected, DB cant find')
@@ -92,5 +106,6 @@ Quote.prototype.update= async function(){
   }
   global.log.debug("update: ", this.dbOut())
   let temp = await db.UpdateDB(filter, this.dbOut(),'quote', {});
+  global.log.debug(temp)
 }
 module.exports = Quote 

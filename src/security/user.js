@@ -31,11 +31,6 @@ User.prototype.fromJson = function (obj){
   }else if(obj.hasOwnProperty("_id")){
     this.id = obj._id.toString()
   }
-  if(this.phone == null && 
-     this.email == null && 
-     this.ip == null ){
-    throw new Error("one of main information missing")
-  }
 }
 User.prototype.toJson = function(){
   return {
@@ -81,6 +76,8 @@ User.prototype.restore = async function(){
     filter= {"email":this.phone};
   }else if(this.accessToken){
     filter = {"accessToken": this.accessToken}
+  }else{
+    throw new Error("There isnt any campaign with this id");
   }
   let temp = await db.GetSpecificFromDB(filter, 'user', {});
   if(temp.length){
@@ -95,20 +92,43 @@ User.prototype.sendMobileVerificationCode = async function(){
   if(global.mongodb == null ){
     throw new Error('Mongo db still not connected, DB cant find');
   }
+  var time = new Date(); 
+  time.setMinutes(time.getMinutes()-5);
+  var filter = {"$and":[{"phone": this.phone}, {"created_at":{"$gt":time.getTime()}}]}
+  var token = await db.FindAllFromDB(filter, "phoneToken"); 
+  global.log.debug("tokens which available is :",token)
+  if(token.length > 0 ) {
+    throw new Error("verification code already have sent")
+  }
   var mobileCode = {}
   mobileCode.created_at = (new Date()).getTime();
   mobileCode.token = tokendigit.generate(5);
   mobileCode.phone = this.phone; 
   await db.InsertManyDB([mobileCode], 'phoneToken');
-  await request.postRequest("https://api.kavenegar.com/v1/"+process.env.KNAPI+"/sms/send.json"+"?"+
-    "receptor="+this.phone+"&message=your validate code is"+mobileCode.token.toString(),{},{}) 
+  await request.postRequest(
+    "https://api.kavenegar.com/v1/"+
+    process.env.KNAPI+
+    "/verify/lookup.json"+
+    "?"+
+    "receptor="+this.phone+
+    "&token="+mobileCode.token.toString()+
+    "&template=forghanverify",{},{}) 
   }catch(e){
     global.log.error("there is an error in verification  mobile: ", e)
+    throw e
   }
 }
 User.prototype.sendEmailVerificationCode = async function(){
   if(global.mongodb == null ){
     throw new Error('Mongo db still not connected, DB cant find');
+  }
+  var time = new Date(); 
+  time.setMinutes(time.getMinutes()-60);
+  var filter = {"$and":[{"email": this.email}, {"created_at":{"$gt":time.getTime()}}]}
+  var token = await db.FindAllFromDB(filter, "emailToken"); 
+  global.log.debug("tokens which available is :",token)
+  if(token.length > 0 ) {
+    throw new Error("verification code already have sent")
   }
   var emailCode = {}
   emailCode.created_at = (new Date()).getTime();
@@ -159,9 +179,11 @@ User.prototype.checkExistance = async function(){
   }else if(this.hasMobile()){
     filterMobileEmail = {"phone":this.phone};
   }else if(this.hasEmail()){
-    filterMobileEmail = {"email":this.phone};
+    filterMobileEmail = {"email":this.email};
+  }else{
+    return false; 
   }
-  filters = {"$and":[ {"isActive":true} , filterMobileEmail ]}
+  filters = {"$and":[ filterMobileEmail ]}
   if(global.mongodb == null ){
     throw new Error('Mongo db still not connected, DB cant find');
   }

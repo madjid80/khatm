@@ -1,34 +1,24 @@
 var User = require(__dirname+'/user.js')
 var db = require(__dirname+'/../utility/mongo.js')
-module.exports.create = async function(req, res){
-  try{
-    var user = new User(); 
-    user.fromJson(req.body);
-    if(await user.checkExistance()){
-      throw new Error("User Exist")
-    }
-    if(user.hasMobile()){
-      user.sendMobileVerificationCode();
-    }else if (user.hasEmail()){
-      user.sendEmailVerificationCOde(); 
-    } 
-    await user.store()
-    res.status(200).send("verification code send")
-  }catch(e){
-    global.log.error("an error rised form user creation: ", e)
-    res.status(400).send(e)
-  }
-}
 module.exports.login = async function(req, res){
   try{
     var user = new User(); 
     user.fromJson(req.body);
-    await user.restore();
+    if(await user.checkExistance()){
+      await user.restore();
+    }else{
+      await user.store()
+    }
     if(user.hasMobile()){
-      user.sendMobileVerificationCode();
+      await user.sendMobileVerificationCode();
     }else if (user.hasEmail()){
-      user.sendEmailVerificationCOde(); 
-    } 
+      await user.sendEmailVerificationCOde(); 
+    }else{
+      await user.GenerateAccessToken(); 
+      res.set('token',user.accessToken);  
+      res.status(200).send(user.toJson())
+      return; 
+    }
     res.status(200).send("verification code send")
   }catch(e){
     global.log.error("an error rised form user creation: ", e)
